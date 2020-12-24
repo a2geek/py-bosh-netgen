@@ -39,7 +39,16 @@ class Subnet:
             self.cloud_properties = cloud_properties
 
 
-def prepare_subnet_lists(subnets):
+def parse_ip_range(text) -> netaddr.IPRange:
+    if '-' in text:
+        (first_ip, last_ip) = text.split('-')
+    else:
+        first_ip = last_ip = text
+
+    return netaddr.IPRange(first_ip, last_ip)
+
+
+def prepare_subnet_lists(subnets) -> None:
     print(f"Pre-processing {len(subnets)} subnet(s):")
     for subnet in subnets:
         subnet_range = subnet['range']
@@ -55,6 +64,12 @@ def prepare_subnet_lists(subnets):
             print(f"  Gateway calculated to be {subnet_gateway}")
         else:
             ip_list.remove(netaddr.IPAddress(subnet['gateway']))
+
+        if 'reserved' in subnet:
+            for reserved_entry in subnet['reserved']:
+                for ip_reserved in parse_ip_range(reserved_entry):
+                    if ip_reserved in ip_list:
+                        ip_list.remove(ip_reserved)
 
         subnet['list'] = ip_list
         subnet['ip_network'] = ip_network
