@@ -144,7 +144,12 @@ class NoAliasDumper(yaml.Dumper):
 
 def main(config_file, output_stream):
     with open(config_file) as file:
-        data = yaml.load(file, Loader=yaml.FullLoader)
+        try:
+            data = yaml.load(file, Loader=yaml.FullLoader)
+        except yaml.YAMLError as ex:
+            print(f"Error loading config file: {ex}")
+            sys.exit(1)
+
         config_subnets = data['subnets']
         config_networks = data['networks']
 
