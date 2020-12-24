@@ -5,53 +5,7 @@ require explicitly defined networks, including reserved static IP addresses.
 Additional annoyance is done by not paying attention to what addresses have already
 been assigned, leading to confusion when deploying infrastructure.
 
-Sample:
-    subnets:
-    - azs: [z1,z2,z3]
-      range: 192.168.123.0/24
-      dns: [192.168.5.1]
-    networks:
-    - name: jumpbox
-      size: 2
-      static: 1
-    - name: vault
-      size: 4
-      static: 3
-
-Generates the following cloud-config networks section:
-    networks:
-    - name: jumpbox
-      subnets:
-      - azs:
-        - z1
-        - z2
-        - z3
-        dns:
-        - 192.168.5.1
-        gateway: 192.168.123.1
-        range: 192.168.123.0/24
-        reserved:
-        - 192.168.123.0 - 192.168.123.1
-        - 192.168.123.4 - 192.168.123.255
-        static:
-        - 192.168.123.2
-      type: manual
-    - name: vault
-      subnets:
-      - azs:
-        - z1
-        - z2
-        - z3
-        dns:
-        - 192.168.5.1
-        gateway: 192.168.123.1
-        range: 192.168.123.0/24
-        reserved:
-        - 192.168.123.0 - 192.168.123.3
-        - 192.168.123.8 - 192.168.123.255
-        static:
-        - 192.168.123.4 - 192.168.123.6
-      type: manual
+See README.md and sample-config.yml for examples.
 """
 
 
@@ -74,13 +28,15 @@ class Network:
 
 
 class Subnet:
-    def __init__(self, azs, range, dns, reserved, gateway, static):
+    def __init__(self, azs, range, dns, reserved, gateway, static, cloud_properties):
         self.azs = azs
         self.range = range
         self.dns = dns
         self.reserved = reserved
         self.gateway = gateway
         self.static = static
+        if cloud_properties is not None:
+            self.cloud_properties = cloud_properties
 
 
 def prepare_subnet_lists(subnets):
@@ -122,17 +78,18 @@ def format_subnet_range(start_address, end_address) -> str:
 
 def build_subnets(subnets, net_size, net_static) -> [Subnet]:
     subnet_list = []
-    for x in subnets:
-        subnet_azs = x['azs']
-        subnet_dns = x['dns']
-        subnet_range = x['range']
-        subnet_gateway = str(x['gateway'])
+    for subnet in subnets:
+        subnet_azs = subnet['azs']
+        subnet_dns = subnet['dns']
+        subnet_range = subnet['range']
+        subnet_gateway = str(subnet['gateway'])
+        subnet_cloud_properties = subnet['cloud_properties'] if 'cloud_properties' in subnet else None
 
-        addresses = pull_out_addresses(x['list'], net_size)
+        addresses = pull_out_addresses(subnet['list'], net_size)
         first_address = addresses[0]
         last_address = addresses[-1]
-        first_in_network = netaddr.IPAddress(x['ip_network'].first)
-        last_in_network = netaddr.IPAddress(x['ip_network'].last)
+        first_in_network = netaddr.IPAddress(subnet['ip_network'].first)
+        last_in_network = netaddr.IPAddress(subnet['ip_network'].last)
 
         subnet_reserved = []
         if first_in_network < first_address:
@@ -151,7 +108,8 @@ def build_subnets(subnets, net_size, net_static) -> [Subnet]:
                                   dns=subnet_dns,
                                   reserved=subnet_reserved,
                                   gateway=subnet_gateway,
-                                  static=subnet_static))
+                                  static=subnet_static,
+                                  cloud_properties=subnet_cloud_properties))
     return subnet_list
 
 
