@@ -139,7 +139,10 @@ def load_networks(networks, subnets) -> [Network]:
         else:
             net_type = 'manual'
         net_size = entry['size']
-        net_static = entry['static']
+        if 'static' in entry:
+            net_static = entry['static']
+        else:
+            net_static = 0
         net_subnets = build_subnets(subnets, net_size, net_static)
 
         net_list.append(Network(name=net_name,
